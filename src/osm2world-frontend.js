@@ -32,6 +32,14 @@ const OSM2World = {};
 			camera.panningSensibility = 3;
 
 			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
+			light.intensity = 0.5
+
+			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
+			sunLight.intensity = 1.0 - light.intensity
+			const shadowGenerator = new BABYLON.CascadedShadowGenerator(2048, sunLight)
+			shadowGenerator.autoCalcDepthBounds = true
+			shadowGenerator.forceBackFacesOnly = true
+			shadowGenerator._darkness = -2
 
 			const urlParams = new URLSearchParams(window.location.search);
 			console.log(urlParams);
@@ -45,7 +53,10 @@ const OSM2World = {};
 			function loadAndPlaceTile(tileNumber) {
 				return BABYLON.SceneLoader.ImportMeshAsync(null, tileRoot, "lod1/" + tileNumber + ".glb").then((result) => {
 					const centerPos = proj.toXZ(tileNumber.bounds().center)
-					result.meshes[0].setAbsolutePosition(-centerPos.x, 0, -centerPos.y)
+					const tileMesh = result.meshes[0]
+					tileMesh.setAbsolutePosition(-centerPos.x, 0, -centerPos.y)
+					shadowGenerator.addShadowCaster(tileMesh, true)
+					tileMesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
 				})
 			}
 
