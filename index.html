@@ -12,6 +12,7 @@
         height: 100%;
         margin: 0;
         padding: 0;
+        font-family: 'Arial', sans-serif;
       }
 
       #renderCanvas {
@@ -19,6 +20,56 @@
         height: 100%;
         touch-action: none;
       }
+
+      #searchContainer {
+        position: absolute;
+        top: 21px;
+        left: 60px;
+        z-index: 20000;
+        max-width: 400px;
+      }
+
+      #searchField {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      #searchInput {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px 0 0 5px;
+      }
+
+      #searchButton {
+        background-color: #4CAF50;
+        color: white;
+        border: 1px solid #4CAF50;
+        padding: 10px;
+        border-radius: 0 5px 5px 0;
+        cursor: pointer;
+      }
+
+      #resultsList {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background-color: #fff;
+      }
+
+      #resultsList li {
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #resultsList li:hover {
+        background-color: #f0f0f0;
+      }
+
     </style>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -27,12 +78,26 @@
     <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
     <script src="src/geocoords.js"></script>
     <script src="src/osm2world-frontend.js"></script>
+    <script src="src/searchField.js"></script>
   </head>
 
   <body>
+
     <canvas id="renderCanvas"></canvas>
+
+    <div id="searchContainer">
+      <div id="searchField">
+        <input type="text" id="searchInput" placeholder="Enter location...">
+        <div id="searchButton">&#128269;</div>
+      </div>
+      <ul id="resultsList"></ul>
+    </div>
+
     <script>
       new OSM2World.Viewer("renderCanvas", "https://gltiles.osm2world.org/glb/")
+      setupSearchField()
     </script>
+
   </body>
+
 </html>
