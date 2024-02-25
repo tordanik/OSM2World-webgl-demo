@@ -1,13 +1,12 @@
 "use strict"
 
-function setupSearchField() {
+function setupSearchField(viewer) {
 
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const resultsList = document.getElementById('resultsList')
 
-    const renderCanvas = document.getElementById('renderCanvas');
-    renderCanvas.addEventListener('click', () => clearResults())
+    viewer.canvas.addEventListener('click', () => clearResults())
 
     searchInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
@@ -21,11 +20,11 @@ function setupSearchField() {
 
     resultsList.addEventListener('click', function (event) {
         if (event.target.tagName === 'LI') {
-            const selectedResult = event.target;
-            const latitude = selectedResult.dataset.lat;
-            const longitude = selectedResult.dataset.lon;
-            console.log(`Selected location - Latitude: ${latitude}, Longitude: ${longitude}`);
-            resultsList.innerHTML = ''; // Clear the results list
+            const selectedResult = event.target
+            viewer.setView(new LatLon(
+                parseFloat(selectedResult.dataset.lat),
+                parseFloat(selectedResult.dataset.lon)))
+            clearResults()
         }
     });
 

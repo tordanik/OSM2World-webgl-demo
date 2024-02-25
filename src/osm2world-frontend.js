@@ -16,6 +16,7 @@ const OSM2World = {};
 		originLatLon;
 
 		#shadowGenerator;
+		#loadedTiles = new Set();
 
 		/**
 		 * @param {string} canvasID  id of the canvas to use for the viewer
@@ -64,8 +65,11 @@ const OSM2World = {};
 
 		setView(originLatLon) {
 
+			console.log(originLatLon)
+
 			this.originLatLon = originLatLon
 
+			if (this.camera) { this.camera.dispose() }
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			this.camera.attachControl(this.canvas, true);
 			this.camera.minZ = 10;
@@ -73,6 +77,8 @@ const OSM2World = {};
 			this.camera.panningSensibility = 3;
 
 			const centerTile = TileNumber.atLatLon(15, originLatLon)
+
+			this.#loadedTiles.forEach(t => {t.dispose()})
 
 			this.loadAndPlaceTile(centerTile, true).then(() => {
 				setTimeout(() => {
@@ -97,6 +103,7 @@ const OSM2World = {};
 				tileMesh.setAbsolutePosition(-centerPos.x, 0, -centerPos.y)
 				this.#shadowGenerator.addShadowCaster(tileMesh, true)
 				tileMesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
+				this.#loadedTiles.add(tileMesh)
 			})
 		}
 

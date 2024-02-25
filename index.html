@@ -94,8 +94,8 @@
     </div>
 
     <script>
-      new OSM2World.Viewer("renderCanvas", "https://gltiles.osm2world.org/glb/")
-      setupSearchField()
+      const viewer = new OSM2World.Viewer("renderCanvas", "https://gltiles.osm2world.org/glb/")
+      setupSearchField(viewer)
     </script>
 
   </body>
