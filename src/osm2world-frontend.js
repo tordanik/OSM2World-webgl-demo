@@ -11,6 +11,7 @@ const OSM2World = {};
 	OSM2World.Viewer = class {
 
 		canvas;
+		scene;
 		tileRoot;
 		camera;
 		originLatLon;
@@ -31,9 +32,16 @@ const OSM2World = {};
 
 			const engine = new BABYLON.Engine(this.canvas, true);
 
-			const scene = new BABYLON.Scene(engine);
+			this.scene = new BABYLON.Scene(engine);
 
-			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: 5000 }, scene);
+			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
+			this.camera.attachControl(this.canvas, true);
+			this.camera.minZ = 10;
+			this.camera.maxZ = 10000;
+			this.camera.panningSensibility = 3;
+
+
+			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: 5000 }, this.scene);
 
 			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
 			light.intensity = 0.5
@@ -43,7 +51,9 @@ const OSM2World = {};
 			this.#shadowGenerator = new BABYLON.CascadedShadowGenerator(2048, sunLight)
 			this.#shadowGenerator.autoCalcDepthBounds = true
 			this.#shadowGenerator.forceBackFacesOnly = true
-			this.#shadowGenerator._darkness = -2
+			this.#shadowGenerator._darkness = 0
+
+			new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
 
 			const urlParams = new URLSearchParams(window.location.search);
 			const lat = urlParams.get("lat") || 48.14738;
@@ -53,7 +63,7 @@ const OSM2World = {};
 			// Register a render loop to repeatedly render the scene
 			engine.runRenderLoop(() => {
 				skyDome.position = new BABYLON.Vector3(this.camera.target.x, 0, this.camera.target.z)
-				scene.render();
+				this.scene.render();
 			});
 
 			// Watch for browser/canvas resize events
@@ -69,12 +79,10 @@ const OSM2World = {};
 
 			this.originLatLon = originLatLon
 
-			if (this.camera) { this.camera.dispose() }
-			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
-			this.camera.attachControl(this.canvas, true);
-			this.camera.minZ = 10;
-			this.camera.maxZ = 10000;
-			this.camera.panningSensibility = 3;
+			this.camera.target = new BABYLON.Vector3(0, 0, 0)
+			this.camera.alpha = Math.PI / 2
+			this.camera.beta = Math.PI / 4
+			this.camera.radius = 500
 
 			const centerTile = TileNumber.atLatLon(15, originLatLon)
 
