@@ -12,12 +12,16 @@ const OSM2World = {};
 
 		canvas;
 		scene;
-		tileRoot;
 		camera;
 		originLatLon;
 
 		#shadowGenerator;
+
+		tileLayerRootUrl;
 		#loadedTiles = new Set();
+
+		modelUrl;
+		#model = null;
 
 		/**
 		 * @param {string} canvasID  id of the canvas to use for the viewer
@@ -28,7 +32,7 @@ const OSM2World = {};
 			this.canvas = document.getElementById(canvasID);
 			this.canvas.setAttribute("touchAction", "none");
 
-			this.tileRoot = tileRoot;
+			this.tileLayerRootUrl = tileRoot;
 
 			const engine = new BABYLON.Engine(this.canvas, true);
 
@@ -73,6 +77,27 @@ const OSM2World = {};
 
 		}
 
+		clearContent() {
+
+			if (this.#model) {
+				this.#model.dispose()
+				this.#model = null
+			}
+
+			this.#loadedTiles.forEach(t => {t.dispose()})
+			this.#loadedTiles.clear()
+
+		}
+
+		addModel(modelUrl) {
+			this.clearContent()
+			return BABYLON.SceneLoader.ImportMeshAsync(null, modelUrl).then((result) => {
+				const mesh = result.meshes[0]
+				this.#addMeshToScene(mesh, 0, 0, 0)
+				this.#model = mesh
+			})
+		}
+
 		setView(originLatLon) {
 
 			console.log(originLatLon)
@@ -86,7 +111,7 @@ const OSM2World = {};
 
 			const centerTile = TileNumber.atLatLon(15, originLatLon)
 
-			this.#loadedTiles.forEach(t => {t.dispose()})
+			this.clearContent()
 
 			this.loadAndPlaceTile(centerTile, true).then(() => {
 				setTimeout(() => {
@@ -105,14 +130,18 @@ const OSM2World = {};
 
 		loadAndPlaceTile(tileNumber) {
 			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
-			return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileRoot, "lod1/" + tileNumber + ".glb").then((result) => {
-				const centerPos = proj.toXZ(tileNumber.bounds().center)
+			const centerPos = proj.toXZ(tileNumber.bounds().center)
+			return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, "lod1/" + tileNumber + ".glb").then((result) => {
 				const tileMesh = result.meshes[0]
-				tileMesh.setAbsolutePosition(-centerPos.x, 0, -centerPos.y)
-				this.#shadowGenerator.addShadowCaster(tileMesh, true)
-				tileMesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
+				this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.y)
 				this.#loadedTiles.add(tileMesh)
 			})
+		}
+
+		#addMeshToScene(mesh, x, y, z) {
+			mesh.setAbsolutePosition(x, y, z)
+			this.#shadowGenerator.addShadowCaster(mesh, true)
+			mesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
 		}
 
 	}
