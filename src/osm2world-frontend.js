@@ -40,12 +40,17 @@ const OSM2World = {};
 
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			this.camera.attachControl(this.canvas, true);
-			this.camera.minZ = 10;
+			this.camera.minZ = 0.1;
 			this.camera.maxZ = 10000;
-			this.camera.panningSensibility = 3;
+			this.camera.lowerBetaLimit = 0;
+			this.camera.upperBetaLimit = Math.PI / 2.1; // almost horizontal
+			this.camera.lowerRadiusLimit = 1;
+			this.camera.upperRadiusLimit = 4000;
+			this.camera.mapPanning = true; // prevents vertical panning
+			this.camera.panningSensibility = 5;
 
 
-			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: 5000 }, this.scene);
+			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: this.camera.upperRadiusLimit * 2.1 }, this.scene);
 
 			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
 			light.intensity = 0.5
