@@ -7,6 +7,8 @@
 const OSM2World = {};
 (function() {
 
+	const sceneDiameter = 10000;
+
 	/** WebGL-based viewer */
 	OSM2World.Viewer = class {
 
@@ -18,7 +20,9 @@ const OSM2World = {};
 		#shadowGenerator;
 
 		tileLayerRootUrl;
-		#loadedTiles = new Set();
+
+		/** currently loaded tiles in a map from tile numbers' string representations to meshes */
+		#loadedTiles = new Map();
 
 		modelUrl;
 		#model = null;
@@ -41,16 +45,16 @@ const OSM2World = {};
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			this.camera.attachControl(this.canvas, true);
 			this.camera.minZ = 0.1;
-			this.camera.maxZ = 10000;
+			this.camera.maxZ = sceneDiameter * 1.1;
 			this.camera.lowerBetaLimit = 0;
 			this.camera.upperBetaLimit = Math.PI / 2.1; // almost horizontal
 			this.camera.lowerRadiusLimit = 1;
-			this.camera.upperRadiusLimit = 4000;
+			this.camera.upperRadiusLimit = sceneDiameter / 2.1;
 			this.camera.mapPanning = true; // prevents vertical panning
 			this.camera.panningSensibility = 5;
 
 
-			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: this.camera.upperRadiusLimit * 2.1 }, this.scene);
+			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: sceneDiameter }, this.scene);
 
 			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
 			light.intensity = 0.5
@@ -68,6 +72,9 @@ const OSM2World = {};
 			const lat = urlParams.get("lat") || 48.14738;
 			const lon = urlParams.get("lon") || 11.57403;
 			this.setView(new LatLon(lat, lon))
+
+			// regularly update the loaded tiles
+			setInterval(() => this.#updateTiles(), 1000);
 
 			// Register a render loop to repeatedly render the scene
 			engine.runRenderLoop(() => {
@@ -89,7 +96,7 @@ const OSM2World = {};
 				this.#model = null
 			}
 
-			this.#loadedTiles.forEach(t => {t.dispose()})
+			this.#loadedTiles.forEach(t => {if (t) {t.dispose()}})
 			this.#loadedTiles.clear()
 
 		}
@@ -105,7 +112,7 @@ const OSM2World = {};
 
 		setView(originLatLon) {
 
-			console.log(originLatLon)
+			console.log("Set view", originLatLon)
 
 			this.originLatLon = originLatLon
 
@@ -114,33 +121,69 @@ const OSM2World = {};
 			this.camera.beta = Math.PI / 4
 			this.camera.radius = 500
 
-			const centerTile = TileNumber.atLatLon(15, originLatLon)
-
-			this.clearContent()
-
-			this.loadAndPlaceTile(centerTile, true).then(() => {
-				setTimeout(() => {
-					for (let x = -3; x <= 3; x++) {
-						for (let y = -3; y <= 3; y++) {
-							let dist = Math.abs(x) + Math.abs(y);
-							if (dist > 0 && dist <= 4) {
-								this.loadAndPlaceTile(centerTile.add(x, y))
-							}
-						}
-					}
-				}, 500);
-			})
+			this.clearContent() // TODO remove once updateTiles works
 
 		}
 
-		loadAndPlaceTile(tileNumber) {
+		/**
+		 * loads and discards tiles based on the current camera position.
+ 		 */
+		#updateTiles() {
+
 			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
-			const centerPos = proj.toXZ(tileNumber.bounds().center)
-			return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, "lod1/" + tileNumber + ".glb").then((result) => {
-				const tileMesh = result.meshes[0]
-				this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.y)
-				this.#loadedTiles.add(tileMesh)
+			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
+			const cameraLatLon = proj.toLatLon(cameraXZ)
+
+			const centerTile = TileNumber.atLatLon(15, cameraLatLon)
+
+			// determine a set of tiles near the camera
+
+			let tilesNearCameraTarget = new Set()
+			for (let x = -10; x <= 10; x++) {
+				for (let y = -10; y <= 10; y++) {
+					const tile = centerTile.add(x, y)
+					const distance = proj.toXZ(tile.bounds().center).distanceTo(cameraXZ)
+					if (distance <= sceneDiameter / 1.9) { // could be sceneDiameter / 2 if it wasn't distance to the center
+						tilesNearCameraTarget.add(tile)
+					}
+				}
+			}
+
+			// load the tiles near the camera.
+			// If the first one isn't loaded yet, wait for it. This ensures that something is visible in the center asap
+			// and reduces duplicate texture downloads.
+
+			this.#loadAndPlaceTile(centerTile, true).then(() => {
+				setTimeout(() => {
+					tilesNearCameraTarget.forEach(t => this.#loadAndPlaceTile(t))
+				}, this.#loadedTiles.has(centerTile.toString()) ? 0 : 500);
 			})
+
+			// discard tiles which are no longer near the camera
+
+			for (const [tileNumberString, mesh] of this.#loadedTiles) {
+				if (!Array.from(tilesNearCameraTarget).some(t => t.toString() === tileNumberString)) {
+					if (mesh != null) { mesh.dispose() }
+					this.#loadedTiles.delete(tileNumberString)
+				}
+			}
+
+		}
+
+		#loadAndPlaceTile(tileNumber) {
+			if (!this.#loadedTiles.has(tileNumber.toString())) {
+				this.#loadedTiles.set(tileNumber.toString(), null) // block further attempts to load the tile while this one is in progress
+				const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
+				const centerPos = proj.toXZ(tileNumber.bounds().center)
+				console.log("Loading tile: " + tileNumber)
+				return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, "lod1/" + tileNumber + ".glb").then((result) => {
+					const tileMesh = result.meshes[0]
+					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
+					this.#loadedTiles.set(tileNumber.toString(), tileMesh)
+				})
+			} else {
+				return Promise.resolve()
+			}
 		}
 
 		#addMeshToScene(mesh, x, y, z) {

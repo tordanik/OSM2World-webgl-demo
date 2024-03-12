@@ -8,6 +8,25 @@ class LatLon {
         this.lat = lat
         this.lon = lon
     }
+    toString() {
+        return this.lat + ", " + this.lon;
+    }
+}
+
+/**
+ * coordinate pair with x and z in meters
+ */
+class XZ {
+    constructor(x, z) {
+        this.x = x
+        this.z = z
+    }
+    toString() {
+        return this.x + ", " + this.z;
+    }
+    distanceTo(other) {
+        return Math.sqrt((other.x - this.x) ** 2 + (other.z - this.z) ** 2)
+    }
 }
 
 /**
@@ -90,9 +109,9 @@ class OrthographicAzimuthalMapProjection {
         const lon = toRadians(latLon.lon);
 
         const x = GLOBE_RADIUS * Math.cos(lat) * Math.sin(lon - this._lon0);
-        const y = GLOBE_RADIUS * (Math.cos(this._lat0) * Math.sin(lat) - Math.sin(this._lat0) * Math.cos(lat) * Math.cos(lon - this._lon0));
+        const z = GLOBE_RADIUS * (Math.cos(this._lat0) * Math.sin(lat) - Math.sin(this._lat0) * Math.cos(lat) * Math.cos(lon - this._lon0));
 
-        return {x: x, y: y};
+        return new XZ(x, z);
 
     }
 
