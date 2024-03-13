@@ -130,6 +130,8 @@ const OSM2World = {};
  		 */
 		#updateTiles() {
 
+			const maxTileRings = 10;
+
 			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
 			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
 			const cameraLatLon = proj.toLatLon(cameraXZ)
@@ -139,8 +141,8 @@ const OSM2World = {};
 			// determine a set of tiles near the camera
 
 			let tilesNearCameraTarget = new Set()
-			for (let x = -10; x <= 10; x++) {
-				for (let y = -10; y <= 10; y++) {
+			for (let x = -maxTileRings; x <= maxTileRings; x++) {
+				for (let y = -maxTileRings; y <= maxTileRings; y++) {
 					const tile = centerTile.add(x, y)
 					const distance = proj.toXZ(tile.bounds().center).distanceTo(cameraXZ)
 					if (distance <= sceneDiameter / 1.9) { // could be sceneDiameter / 2 if it wasn't distance to the center
@@ -149,15 +151,22 @@ const OSM2World = {};
 				}
 			}
 
-			// load the tiles near the camera.
-			// If the first one isn't loaded yet, wait for it. This ensures that something is visible in the center asap
-			// and reduces duplicate texture downloads.
+			// load the tiles near the camera. Do so one ring at a time.
+			// This ensures that something is visible in the center and reduces duplicate texture downloads.
 
-			this.#loadAndPlaceTile(centerTile, true).then(() => {
-				setTimeout(() => {
-					tilesNearCameraTarget.forEach(t => this.#loadAndPlaceTile(t))
-				}, this.#loadedTiles.has(centerTile.toString()) ? 0 : 500);
-			})
+			for (let ring = 0; ring <= maxTileRings; ring++) {
+				let ringCompletelyLoaded = true
+				for (let t of Array.from(tilesNearCameraTarget)) {
+					const tileRing = Math.max(Math.abs(t.x - centerTile.x), Math.abs(t.y - centerTile.y))
+					if (tileRing === ring) {
+						if (!this.#loadedTiles.has(t.toString())) {
+							this.#loadAndPlaceTile(t)
+							ringCompletelyLoaded = false
+						}
+					}
+				}
+				if (!ringCompletelyLoaded) break;
+			}
 
 			// discard tiles which are no longer near the camera
 
