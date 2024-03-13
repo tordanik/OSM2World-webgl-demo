@@ -12,6 +12,7 @@ const OSM2World = {};
 	/** WebGL-based viewer */
 	OSM2World.Viewer = class {
 
+		#engine;
 		canvas;
 		scene;
 		camera;
@@ -38,9 +39,9 @@ const OSM2World = {};
 
 			this.tileLayerRootUrl = tileRoot;
 
-			const engine = new BABYLON.Engine(this.canvas, true);
+			this.#engine = new BABYLON.Engine(this.canvas, true);
 
-			this.scene = new BABYLON.Scene(engine);
+			this.scene = new BABYLON.Scene(this.#engine);
 
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			this.camera.attachControl(this.canvas, true);
@@ -77,14 +78,14 @@ const OSM2World = {};
 			setInterval(() => this.#updateTiles(), 1000);
 
 			// Register a render loop to repeatedly render the scene
-			engine.runRenderLoop(() => {
+			this.#engine.runRenderLoop(() => {
 				skyDome.position = new BABYLON.Vector3(this.camera.target.x, 0, this.camera.target.z)
 				this.scene.render();
 			});
 
 			// Watch for browser/canvas resize events
 			window.addEventListener("resize", () => {
-				engine.resize();
+				this.#engine.resize();
 			});
 
 		}
@@ -129,6 +130,8 @@ const OSM2World = {};
 		 * loads and discards tiles based on the current camera position.
  		 */
 		#updateTiles() {
+
+			console.log(this.#engine.getFps().toFixed() + " fps")
 
 			const maxTileRings = 10;
 
