@@ -7,6 +7,7 @@
 const OSM2World = {};
 (function() {
 
+	const ssrEnabled = false;
 	const sceneDiameter = 10000;
 
 	/** WebGL-based viewer */
@@ -69,7 +70,12 @@ const OSM2World = {};
 			this.#shadowGenerator.autoCalcDepthBounds = true
 			this.#shadowGenerator.forceBackFacesOnly = true
 
-			new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
+			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, this.scene, [this.camera])
+			defaultPipeline.samples = 4
+			if (ssrEnabled) {
+				defaultPipeline.fxaaEnabled = true
+				const ssr = new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
+			}
 
 			const urlParams = new URLSearchParams(window.location.search);
 			const lat = urlParams.get("lat") || 48.14738;
