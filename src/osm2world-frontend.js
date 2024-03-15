@@ -149,7 +149,7 @@ const OSM2World = {};
 			for (let x = -maxTileRings; x <= maxTileRings; x++) {
 				for (let y = -maxTileRings; y <= maxTileRings; y++) {
 					const tile = centerTile.add(x, y)
-					const distance = proj.toXZ(tile.bounds().center).distanceTo(cameraXZ)
+					const distance = this.#distanceToTile(proj, cameraXZ, tile)
 					if (distance <= sceneDiameter / 1.9) { // could be sceneDiameter / 2 if it wasn't distance to the center
 						tilesNearCameraTarget.add(tile)
 					}
@@ -204,6 +204,32 @@ const OSM2World = {};
 			mesh.setAbsolutePosition(x, y, z)
 			this.#shadowGenerator.addShadowCaster(mesh, true)
 			mesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
+		}
+
+		/** returns the distance between a point and the bounds of a tile */
+		#distanceToTile(proj, point, tile) {
+
+			const min = proj.toXZ(tile.bounds().min)
+			const max = proj.toXZ(tile.bounds().max)
+
+			if (point.x >= min.x && point.x <= max.x
+				&& point.z >= min.z && point.z <= max.z) {
+				return 0
+			} else {
+
+				// TODO: this isn't accurate if the tile boundary's closest point is on one of its edges (not a corner)
+
+				const points = [
+					min,
+					new XZ(min.x, max.z),
+					new XZ(max.x, min.z),
+					max
+				];
+
+				return Math.min(...points.map(p => p.distanceTo(point)))
+
+			}
+
 		}
 
 	}
