@@ -59,15 +59,11 @@ const OSM2World = {};
 			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
 			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
 
-			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
-			light.intensity = 0.5
-
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
-			sunLight.intensity = 1.0 - light.intensity
+			sunLight.intensity = 1.0
 			this.#shadowGenerator = new BABYLON.CascadedShadowGenerator(2048, sunLight)
 			this.#shadowGenerator.autoCalcDepthBounds = true
 			this.#shadowGenerator.forceBackFacesOnly = true
-			this.#shadowGenerator._darkness = 0
 
 			new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
 
