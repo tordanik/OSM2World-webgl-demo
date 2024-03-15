@@ -54,8 +54,10 @@ const OSM2World = {};
 			this.camera.mapPanning = true; // prevents vertical panning
 			this.camera.panningSensibility = 5;
 
+			this.scene.environmentTexture = new BABYLON.HDRCubeTexture("DaySkyHDRI041B.hdr", this.scene, 512, false, true, false, true)
 
-			const skyDome = new BABYLON.PhotoDome("sky", "sky_dome.jpg", { size: sceneDiameter }, this.scene);
+			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
+			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
 
 			const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 1));
 			light.intensity = 0.5
