@@ -43,6 +43,9 @@ const OSM2World = {};
 
 			this.scene = new BABYLON.Scene(this.#engine);
 
+			this.scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
+			this.scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
+
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			this.camera.attachControl(this.canvas, true);
 			this.camera.minZ = 0.1;
@@ -57,6 +60,7 @@ const OSM2World = {};
 			this.scene.environmentTexture = new BABYLON.HDRCubeTexture("DaySkyHDRI041B.hdr", this.scene, 512, false, true, false, true)
 
 			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
+			skyDome.material.fogEnabled = false
 			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
 
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
@@ -77,8 +81,17 @@ const OSM2World = {};
 
 			// Register a render loop to repeatedly render the scene
 			this.#engine.runRenderLoop(() => {
+
 				skyDome.position = new BABYLON.Vector3(this.camera.target.x, 0, this.camera.target.z)
+
+				const cameraDirectionXZ = this.camera.target.subtract(this.camera.globalPosition).multiplyByFloats(1, 0, 1).normalize()
+				const cameraDistanceToSkyEdge = BABYLON.Vector3.Distance(
+					this.camera.globalPosition, skyDome.position.add(cameraDirectionXZ.scale(sceneDiameter / 2)))
+				this.scene.fogStart = cameraDistanceToSkyEdge - (sceneDiameter / 2) * 0.15
+				this.scene.fogEnd = cameraDistanceToSkyEdge + (sceneDiameter / 2) * 0.1
+
 				this.scene.render();
+
 			});
 
 			// Watch for browser/canvas resize events
