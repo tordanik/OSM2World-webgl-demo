@@ -29,6 +29,8 @@ const OSM2World = {};
 		modelUrl;
 		#model = null;
 
+		#ground;
+
 		/**
 		 * @param {string} canvasID  id of the canvas to use for the viewer
 		 * @param {string} tileRoot  root URL for 3D tiles in glTF format
@@ -64,6 +66,8 @@ const OSM2World = {};
 			skyDome.material.fogEnabled = false
 			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
 
+			this.#ground = BABYLON.MeshBuilder.CreateGround("ground", {height: sceneDiameter, width: sceneDiameter})
+
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
 			sunLight.intensity = 1.0
 			this.#shadowGenerator = new BABYLON.CascadedShadowGenerator(2048, sunLight)
@@ -89,6 +93,9 @@ const OSM2World = {};
 			this.#engine.runRenderLoop(() => {
 
 				skyDome.position = new BABYLON.Vector3(this.camera.target.x, 0, this.camera.target.z)
+				this.#ground.position = new BABYLON.Vector3(this.camera.target.x, -0.5, this.camera.target.z)
+
+				this.camera.minZ = Math.min(Math.max(0.1, this.camera.position.y / 100), 10);
 
 				const cameraDirectionXZ = this.camera.target.subtract(this.camera.globalPosition).multiplyByFloats(1, 0, 1).normalize()
 				const cameraDistanceToSkyEdge = BABYLON.Vector3.Distance(
