@@ -23,7 +23,7 @@ const OSM2World = {};
 
 		tileLayerRootUrl;
 
-		/** currently loaded tiles in a map from tile numbers' string representations to meshes */
+		/** currently loaded tiles in a map from TileNumberWithLod string representations to meshes */
 		#loadedTiles = new Map();
 
 		modelUrl;
@@ -173,21 +173,24 @@ const OSM2World = {};
 					const tile = centerTile.add(x, y)
 					const distance = this.#distanceToTile(proj, cameraXZ, tile)
 					if (distance <= sceneDiameter / 1.9) { // could be sceneDiameter / 2 if it wasn't distance to the center
-						tilesNearCameraTarget.add(tile)
+						const lod = tile.equals(centerTile) ? 3 : 1
+						tilesNearCameraTarget.add(new TileNumberWithLod(tile, lod))
 					}
 				}
 			}
+			tilesNearCameraTarget = Array.from(tilesNearCameraTarget)
 
 			// load the tiles near the camera. Do so one ring at a time.
 			// This ensures that something is visible in the center and reduces duplicate texture downloads.
 
 			for (let ring = 0; ring <= maxTileRings; ring++) {
 				let ringCompletelyLoaded = true
-				for (let t of Array.from(tilesNearCameraTarget)) {
+				for (let tWithLod of tilesNearCameraTarget) {
+					const t = tWithLod.tileNumber;
 					const tileRing = Math.max(Math.abs(t.x - centerTile.x), Math.abs(t.y - centerTile.y))
 					if (tileRing === ring) {
-						if (!this.#loadedTiles.has(t.toString())) {
-							this.#loadAndPlaceTile(t)
+						if (!this.#loadedTiles.has(tWithLod.toString())) {
+							this.#loadAndPlaceTile(tWithLod)
 							ringCompletelyLoaded = false
 						}
 					}
@@ -197,25 +200,38 @@ const OSM2World = {};
 
 			// discard tiles which are no longer near the camera
 
-			for (const [tileNumberString, mesh] of this.#loadedTiles) {
-				if (!Array.from(tilesNearCameraTarget).some(t => t.toString() === tileNumberString)) {
+			for (const [tileNumberWithLod, mesh] of this.#loadedTiles) {
+				if (!tilesNearCameraTarget.some(t => t.toString() === tileNumberWithLod)) {
+
+					let tileNumberString = tileNumberWithLod.replace(/lod\d+\//, "")
+
+					if (tilesNearCameraTarget.some(u => u.tileNumber.toString() === tileNumberString
+						&& !this.#loadedTiles.get(u.toString()))) {
+						// keep the tile at the old lod around until the new lod has been loaded
+						console.log("Keeping tile: " + tileNumberWithLod)
+						continue;
+					}
+
+					// discard this tile
+					console.log("Discarding tile: " + tileNumberWithLod)
 					if (mesh != null) { mesh.dispose() }
-					this.#loadedTiles.delete(tileNumberString)
+					this.#loadedTiles.delete(tileNumberWithLod)
+
 				}
 			}
 
 		}
 
-		#loadAndPlaceTile(tileNumber) {
-			if (!this.#loadedTiles.has(tileNumber.toString())) {
-				this.#loadedTiles.set(tileNumber.toString(), null) // block further attempts to load the tile while this one is in progress
+		#loadAndPlaceTile(tileNumberWithLod) {
+			if (!this.#loadedTiles.has(tileNumberWithLod.toString())) {
+				this.#loadedTiles.set(tileNumberWithLod.toString(), null) // block further attempts to load the tile while this one is in progress
 				const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
-				const centerPos = proj.toXZ(tileNumber.bounds().center)
-				console.log("Loading tile: " + tileNumber)
-				return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, "lod1/" + tileNumber + ".glb").then((result) => {
+				const centerPos = proj.toXZ(tileNumberWithLod.tileNumber.bounds().center)
+				console.log("Loading tile: " + tileNumberWithLod)
+				return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, tileNumberWithLod + ".glb").then((result) => {
 					const tileMesh = result.meshes[0]
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
-					this.#loadedTiles.set(tileNumber.toString(), tileMesh)
+					this.#loadedTiles.set(tileNumberWithLod.toString(), tileMesh)
 				})
 			} else {
 				return Promise.resolve()

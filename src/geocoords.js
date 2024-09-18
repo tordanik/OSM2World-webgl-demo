@@ -57,6 +57,10 @@ class TileNumber {
         return `${this.zoom}/${this.x}/${this.y}`
     }
 
+    equals(other) {
+        return this.zoom === other.zoom && this.x === other.x && this.y === other.y;
+    }
+
     add(x, y) {
         return new TileNumber(this.zoom, this.x + x, this.y + y)
     }
@@ -86,6 +90,26 @@ class TileNumber {
     static tile2lat(y, z) {
         const n = Math.PI - (2.0 * Math.PI * y) / Math.pow(2.0, z)
         return toDegrees(Math.atan(Math.sinh(n)))
+    }
+
+}
+
+/** a tile number paired with a level of detail */
+class TileNumberWithLod {
+
+    constructor(tileNumber, lod) {
+
+        this.tileNumber = tileNumber
+        this.lod = lod
+
+        if (lod < 0) {
+            throw new Error(`illegal Level of Detail, must not be negative: ${lod}`);
+        }
+
+    }
+
+    toString() {
+        return `lod${this.lod}/${this.tileNumber}`
     }
 
 }
