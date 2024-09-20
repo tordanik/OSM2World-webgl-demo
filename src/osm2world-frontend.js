@@ -81,10 +81,7 @@ const OSM2World = {};
 				const ssr = new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
 			}
 
-			const urlParams = new URLSearchParams(window.location.search);
-			const lat = urlParams.get("lat") || 48.14738;
-			const lon = urlParams.get("lon") || 11.57403;
-			this.setView(new LatLon(lat, lon))
+			this.#setViewFromUrl()
 
 			// regularly update the loaded tiles
 			setInterval(() => this.#updateTiles(), 1000);
@@ -135,18 +132,54 @@ const OSM2World = {};
 			})
 		}
 
-		setView(originLatLon) {
+		setView(originLatLon, radius, alpha, beta) {
 
 			console.log("Set view", originLatLon)
 
 			this.originLatLon = originLatLon
 
 			this.camera.target = new BABYLON.Vector3(0, 0, 0)
-			this.camera.alpha = Math.PI / 2
-			this.camera.beta = Math.PI / 4
-			this.camera.radius = 500
+			this.camera.radius = radius || 500
+			this.camera.alpha = alpha || Math.PI / 2
+			this.camera.beta = beta || Math.PI / 4
 
 			this.clearContent() // TODO remove once updateTiles works
+
+		}
+
+		/**
+		 * calls setView based on URL parameters such as lat and lon.
+		 * If the parameters aren't present, defaults are used.
+		 */
+		#setViewFromUrl() {
+
+			const urlParams = new URLSearchParams(window.location.search);
+
+			const lat = urlParams.get("lat") || 48.5683;
+			const lon = urlParams.get("lon") || 13.4514;
+			const radius = parseFloat(urlParams.get("radius"));
+			const alpha = parseFloat(urlParams.get("alpha"));
+			const beta = parseFloat(urlParams.get("beta"));
+
+			this.setView(new LatLon(lat, lon), radius, alpha, beta)
+
+		}
+
+		/**
+		 * Updates the URL with the current view
+		 */
+		#updateUrl() {
+
+			const cameraLatLon = this.#getCameraLatLon()
+
+			let newUrl = ''
+				+ '?lat=' + cameraLatLon.lat.toFixed(7)
+				+ '&lon=' + cameraLatLon.lon.toFixed(7)
+				+ '&radius=' + this.camera.radius.toFixed(2)
+				+ '&alpha=' + this.camera.alpha.toFixed(3)
+				+ '&beta=' + this.camera.beta.toFixed(3);
+
+			window.history.replaceState(null, "", newUrl)
 
 		}
 
@@ -161,7 +194,7 @@ const OSM2World = {};
 
 			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
 			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
-			const cameraLatLon = proj.toLatLon(cameraXZ)
+			const cameraLatLon = proj.toLatLon(cameraXZ) // TODO: consider using #getCameraLatLon
 
 			const centerTile = TileNumber.atLatLon(15, cameraLatLon)
 
@@ -220,6 +253,10 @@ const OSM2World = {};
 				}
 			}
 
+			// update the URL based on the current view
+
+			this.#updateUrl()
+
 		}
 
 		#loadAndPlaceTile(tileNumberWithLod) {
@@ -267,6 +304,14 @@ const OSM2World = {};
 				return Math.min(...points.map(p => p.distanceTo(point)))
 
 			}
+
+		}
+
+		#getCameraLatLon() {
+
+			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
+			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
+			return proj.toLatLon(cameraXZ)
 
 		}
 
