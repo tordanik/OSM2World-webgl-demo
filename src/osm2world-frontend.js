@@ -50,7 +50,7 @@ const OSM2World = {};
 			this.scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
 
 			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
-			this.camera.attachControl(this.canvas, true);
+			this.camera.attachControl(this.canvas, true, false, 0);
 			this.camera.minZ = 0.1;
 			this.camera.maxZ = sceneDiameter * 1.1;
 			this.camera.lowerBetaLimit = 0;
