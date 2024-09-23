@@ -9,6 +9,7 @@ const OSM2World = {};
 
 	const ssrEnabled = false;
 	const sceneDiameter = 10000;
+	const highLodDiameter = 500;
 
 	/** WebGL-based viewer */
 	OSM2World.Viewer = class {
@@ -206,7 +207,7 @@ const OSM2World = {};
 					const tile = centerTile.add(x, y)
 					const distance = this.#distanceToTile(proj, cameraXZ, tile)
 					if (distance <= sceneDiameter / 2) {
-						const lod = tile.equals(centerTile) ? 3 : 1
+						const lod = (distance <= highLodDiameter && this.camera.radius <= highLodDiameter) ? 3 : 1
 						tilesNearCameraTarget.add(new TileNumberWithLod(tile, lod))
 					}
 				}
