@@ -205,7 +205,7 @@ const OSM2World = {};
 				for (let y = -maxTileRings; y <= maxTileRings; y++) {
 					const tile = centerTile.add(x, y)
 					const distance = this.#distanceToTile(proj, cameraXZ, tile)
-					if (distance <= sceneDiameter / 1.9) { // could be sceneDiameter / 2 if it wasn't distance to the center
+					if (distance <= sceneDiameter / 2) {
 						const lod = tile.equals(centerTile) ? 3 : 1
 						tilesNearCameraTarget.add(new TileNumberWithLod(tile, lod))
 					}
@@ -289,20 +289,23 @@ const OSM2World = {};
 
 			if (point.x >= min.x && point.x <= max.x
 				&& point.z >= min.z && point.z <= max.z) {
+				// point is within the tile
 				return 0
+			} else if (point.x >= min.x && point.x <= max.x) {
+				// closest point is on a horizontal edge
+				return Math.min(Math.abs(point.z - min.z), Math.abs(point.z - max.z));
+			} else if  (point.x >= min.x && point.x <= max.x) {
+				// closest point is on a vertical edge
+				return Math.min(Math.abs(point.x - min.x), Math.abs(point.x - max.x));
 			} else {
-
-				// TODO: this isn't accurate if the tile boundary's closest point is on one of its edges (not a corner)
-
-				const points = [
+				// closest point is one of the corners
+				const corners = [
 					min,
 					new XZ(min.x, max.z),
 					new XZ(max.x, min.z),
 					max
 				];
-
-				return Math.min(...points.map(p => p.distanceTo(point)))
-
+				return Math.min(...corners.map(p => p.distanceTo(point)))
 			}
 
 		}
