@@ -8,7 +8,7 @@ const OSM2World = {};
 (function() {
 
 	const ssrEnabled = false;
-	const sceneDiameter = 10000;
+	const sceneDiameter = 4000;
 	const highLodDiameter = 500;
 
 	/** WebGL-based viewer */
