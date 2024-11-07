@@ -15,10 +15,11 @@ const OSM2World = {};
 	OSM2World.Viewer = class {
 
 		#engine;
-		canvas;
 		scene;
 		camera;
 		originLatLon;
+
+		#updateUrlParameters;
 
 		#shadowGenerator;
 
@@ -30,44 +31,15 @@ const OSM2World = {};
 		modelUrl;
 		#model = null;
 
-		#ground;
+		constructor(babylonEngine, babylonScene, tileRoot, originLatLon, camera, updateUrlParameters = false) {
 
-		/**
-		 * @param {string} canvasID  id of the canvas to use for the viewer
-		 * @param {string} tileRoot  root URL for 3D tiles in glTF format
-		 */
-		constructor(canvasID, tileRoot) {
-
-			this.canvas = document.getElementById(canvasID);
-			this.canvas.setAttribute("touchAction", "none");
-
-			this.tileLayerRootUrl = tileRoot;
-
-			this.#engine = new BABYLON.Engine(this.canvas, true);
-
-			this.scene = new BABYLON.Scene(this.#engine);
-
-			this.scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
-			this.scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
-
-			this.camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
-			this.camera.attachControl(this.canvas, true, false, 0);
-			this.camera.minZ = 0.1;
-			this.camera.maxZ = sceneDiameter * 1.1;
-			this.camera.lowerBetaLimit = 0;
-			this.camera.upperBetaLimit = Math.PI / 2.1; // almost horizontal
-			this.camera.lowerRadiusLimit = 1;
-			this.camera.upperRadiusLimit = sceneDiameter / 2.1;
-			this.camera.mapPanning = true; // prevents vertical panning
-			this.camera.panningSensibility = 5;
+			this.#engine = babylonEngine
+			this.scene = babylonScene
+			this.tileLayerRootUrl = tileRoot
+			this.camera = camera
+			this.#updateUrlParameters = updateUrlParameters
 
 			this.scene.environmentTexture = new BABYLON.HDRCubeTexture("DaySkyHDRI041B.hdr", this.scene, 512, false, true, false, true)
-
-			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
-			skyDome.material.fogEnabled = false
-			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
-
-			this.#ground = BABYLON.MeshBuilder.CreateGround("ground", {height: sceneDiameter, width: sceneDiameter})
 
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
 			sunLight.intensity = 1.0
@@ -75,41 +47,96 @@ const OSM2World = {};
 			this.#shadowGenerator.autoCalcDepthBounds = true
 			this.#shadowGenerator.forceBackFacesOnly = true
 
-			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, this.scene, [this.camera])
-			defaultPipeline.samples = 4
-			if (ssrEnabled) {
-				defaultPipeline.fxaaEnabled = true
-				const ssr = new BABYLON.SSRRenderingPipeline("ssr", this.scene, [this.camera])
+			if (originLatLon) {
+				this.originLatLon = new LatLon(originLatLon[0], originLatLon[1])
+				this.setView(this.originLatLon, 500, Math.PI / 2, Math.PI / 4)
+			} else {
+				this.#setViewFromUrl()
 			}
-
-			this.#setViewFromUrl()
 
 			// regularly update the loaded tiles
 			setInterval(() => this.#updateTiles(), 1000);
 
+		}
+
+		/**
+		 * Creates an OSM2World viewer based on a canvas.
+		 * Will set up a Babylon scene, camera, sky dome and render loop.
+		 *
+		 * @param {string} canvasID  id of the canvas to use for the viewer
+		 * @param {string} tileRoot  root URL for 3D tiles in glTF format
+		 */
+		static fromCanvas(canvasID, tileRoot) {
+
+			const canvas = document.getElementById(canvasID)
+			canvas.setAttribute("touchAction", "none")
+
+			const engine = new BABYLON.Engine(canvas, true)
+			const scene = new BABYLON.Scene(engine)
+
+			scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
+			scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
+
+			const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
+			camera.attachControl(canvas, true, false, 0);
+			camera.minZ = 0.1;
+			camera.maxZ = sceneDiameter * 1.1;
+			camera.lowerBetaLimit = 0;
+			camera.upperBetaLimit = Math.PI / 2.1; // almost horizontal
+			camera.lowerRadiusLimit = 1;
+			camera.upperRadiusLimit = sceneDiameter / 2.1;
+			camera.mapPanning = true; // prevents vertical panning
+			camera.panningSensibility = 5;
+			camera.internalCamera = true;
+
+			const result = new OSM2World.Viewer(engine, scene, tileRoot, null, camera, true);
+
+			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
+			skyDome.material.fogEnabled = false
+			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
+
+			const ground = BABYLON.MeshBuilder.CreateGround("ground", {height: sceneDiameter, width: sceneDiameter})
+
+			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
+			defaultPipeline.samples = 4
+			if (ssrEnabled) {
+				defaultPipeline.fxaaEnabled = true
+				const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera])
+			}
+
 			// Register a render loop to repeatedly render the scene
-			this.#engine.runRenderLoop(() => {
+			engine.runRenderLoop(() => {
 
-				skyDome.position = new BABYLON.Vector3(this.camera.target.x, 0, this.camera.target.z)
-				this.#ground.position = new BABYLON.Vector3(this.camera.target.x, -0.5, this.camera.target.z)
+				skyDome.position = new BABYLON.Vector3(camera.target.x, 0, camera.target.z)
+				ground.position = new BABYLON.Vector3(camera.target.x, -0.5, camera.target.z)
 
-				this.camera.minZ = Math.min(Math.max(0.1, this.camera.position.y / 100), 10);
+				camera.minZ = Math.min(Math.max(0.1, camera.position.y / 100), 10);
 
-				const cameraDirectionXZ = this.camera.target.subtract(this.camera.globalPosition).multiplyByFloats(1, 0, 1).normalize()
+				const cameraDirectionXZ = camera.target.subtract(camera.globalPosition).multiplyByFloats(1, 0, 1).normalize()
 				const cameraDistanceToSkyEdge = BABYLON.Vector3.Distance(
-					this.camera.globalPosition, skyDome.position.add(cameraDirectionXZ.scale(sceneDiameter / 2)))
-				this.scene.fogStart = cameraDistanceToSkyEdge - (sceneDiameter / 2) * 0.15
-				this.scene.fogEnd = cameraDistanceToSkyEdge + (sceneDiameter / 2) * 0.1
+					camera.globalPosition, skyDome.position.add(cameraDirectionXZ.scale(sceneDiameter / 2)))
+				scene.fogStart = cameraDistanceToSkyEdge - (sceneDiameter / 2) * 0.15
+				scene.fogEnd = cameraDistanceToSkyEdge + (sceneDiameter / 2) * 0.1
 
-				this.scene.render();
+				scene.render();
 
 			});
 
 			// Watch for browser/canvas resize events
 			window.addEventListener("resize", () => {
-				this.#engine.resize();
+				engine.resize();
 			});
 
+			return result;
+
+		}
+
+		/**
+		 * Creates an OSM2World viewer based on an already-existing Babylon scene.
+		 * The caller is responsible for setting up a camera and render loop.
+		 */
+		static fromBabylonScene(babylonEngine, babylonScene, tileRoot, originLatLon, camera) {
+			return new OSM2World.Viewer(babylonEngine, babylonScene, tileRoot, originLatLon, camera, false);
 		}
 
 		clearContent() {
@@ -139,10 +166,12 @@ const OSM2World = {};
 
 			this.originLatLon = originLatLon
 
-			this.camera.target = new BABYLON.Vector3(0, 0, 0)
-			this.camera.radius = radius || 500
-			this.camera.alpha = alpha || Math.PI / 2
-			this.camera.beta = beta || Math.PI / 4
+			if (this.camera.internalCamera) {
+				this.camera.target = new BABYLON.Vector3(0, 0, 0)
+				this.camera.radius = radius || 500
+				this.camera.alpha = alpha || Math.PI / 2
+				this.camera.beta = beta || Math.PI / 4
+			}
 
 			this.clearContent() // TODO remove once updateTiles works
 
@@ -194,7 +223,10 @@ const OSM2World = {};
 			const maxTileRings = 10;
 
 			const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
-			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
+			const cameraXZ = (this.camera.target)
+				? {x: -this.camera.target.x, z: -this.camera.target.z}
+				: {x: 0, z: 0}
+			const cameraRadius = this.camera.radius ? this.camera.radius : 0
 			const cameraLatLon = proj.toLatLon(cameraXZ) // TODO: consider using #getCameraLatLon
 
 			const centerTile = TileNumber.atLatLon(15, cameraLatLon)
@@ -207,7 +239,7 @@ const OSM2World = {};
 					const tile = centerTile.add(x, y)
 					const distance = this.#distanceToTile(proj, cameraXZ, tile)
 					if (distance <= sceneDiameter / 2) {
-						const lod = (distance <= highLodDiameter && this.camera.radius <= highLodDiameter) ? 3 : 1
+						const lod = (distance <= highLodDiameter && cameraRadius <= highLodDiameter) ? 3 : 1
 						tilesNearCameraTarget.add(new TileNumberWithLod(tile, lod))
 					}
 				}
@@ -256,7 +288,9 @@ const OSM2World = {};
 
 			// update the URL based on the current view
 
-			this.#updateUrl()
+			if (this.#updateUrlParameters) {
+				this.#updateUrl()
+			}
 
 		}
 

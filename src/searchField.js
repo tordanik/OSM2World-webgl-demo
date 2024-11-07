@@ -1,12 +1,12 @@
 "use strict"
 
-function setupSearchField(viewer) {
+function setupSearchField(viewer, canvas) {
 
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const resultsList = document.getElementById('resultsList')
 
-    viewer.canvas.addEventListener('click', () => clearResults())
+    canvas.addEventListener('click', () => clearResults())
 
     searchInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
