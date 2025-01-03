@@ -187,9 +187,23 @@ const OSM2World = {};
 
 			const lat = urlParams.get("lat") || 48.5683;
 			const lon = urlParams.get("lon") || 13.4514;
-			const radius = parseFloat(urlParams.get("radius"));
-			const alpha = parseFloat(urlParams.get("alpha"));
-			const beta = parseFloat(urlParams.get("beta"));
+
+			let radius = parseFloat(urlParams.get("radius"));
+			let alpha = parseFloat(urlParams.get("alpha"));
+			let beta = parseFloat(urlParams.get("beta"));
+
+			// support old parameters from maps.osm2world.org
+			if (urlParams.get("zoom") && !urlParams.get("radius")) {
+				radius = 100 * Math.pow(2, 20 - parseInt(urlParams.get("zoom")));
+			}
+			if (!urlParams.get("alpha")) {
+				switch (urlParams.get("view")) {
+					case "N": alpha = Math.PI * 0.5; break;
+					case "W": alpha = Math.PI; break;
+					case "S": alpha = Math.PI * 1.5; break;
+					case "E": alpha = Math.PI * 2; break;
+				}
+			}
 
 			this.setView(new LatLon(lat, lon), radius, alpha, beta)
 
