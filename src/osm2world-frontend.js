@@ -31,6 +31,8 @@ const OSM2World = {};
 		modelUrl;
 		#model = null;
 
+		#statusCallback = null;
+
 		constructor(babylonEngine, babylonScene, tileRoot, originLatLon, camera, updateUrlParameters = false) {
 
 			this.#engine = babylonEngine
@@ -158,6 +160,10 @@ const OSM2World = {};
 				this.#addMeshToScene(mesh, 0, 0, 0)
 				this.#model = mesh
 			})
+		}
+
+		setStatusCallback(callback) {
+			this.#statusCallback = callback
 		}
 
 		setView(originLatLon, radius, alpha, beta) {
@@ -304,6 +310,15 @@ const OSM2World = {};
 
 			if (this.#updateUrlParameters) {
 				this.#updateUrl()
+			}
+
+			// provide status info, e.g. to display a message that tiles are still being loaded
+
+			if (this.#statusCallback) {
+				this.#statusCallback({
+					"centerTileLoaded" : [0, 1, 2, 3, 4].some(lod =>
+						!!this.#loadedTiles.get(new TileNumberWithLod(centerTile, lod).toString()))
+				})
 			}
 
 		}
