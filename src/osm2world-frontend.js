@@ -331,6 +331,7 @@ const OSM2World = {};
 				console.log("Loading tile: " + tileNumberWithLod)
 				return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, tileNumberWithLod + ".glb").then((result) => {
 					const tileMesh = result.meshes[0]
+					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
 					this.#loadedTiles.set(tileNumberWithLod.toString(), tileMesh)
 				})
