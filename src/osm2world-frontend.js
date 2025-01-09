@@ -79,6 +79,8 @@ const OSM2World = {};
 			scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
 			scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
 
+			scene.skipPointerMovePicking = true
+
 			const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			camera.attachControl(canvas, true, false, 0);
 			camera.minZ = 0.1;
