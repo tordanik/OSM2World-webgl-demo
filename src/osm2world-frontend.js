@@ -317,9 +317,12 @@ const OSM2World = {};
 			// provide status info, e.g. to display a message that tiles are still being loaded
 
 			if (this.#statusCallback) {
+				const centerTileContent =  [0, 1, 2, 3, 4]
+					.map(lod => this.#loadedTiles.get(new TileNumberWithLod(centerTile, lod).toString()))
+					.find(t => !!t)
 				this.#statusCallback({
-					"centerTileLoaded" : [0, 1, 2, 3, 4].some(lod =>
-						!!this.#loadedTiles.get(new TileNumberWithLod(centerTile, lod).toString()))
+					"centerTileLoading" : !centerTileContent,
+					"centerTileMissing" : centerTileContent && centerTileContent.name && centerTileContent.name.startsWith("missing")
 				})
 			}
 
@@ -336,6 +339,9 @@ const OSM2World = {};
 					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
 					this.#loadedTiles.set(tileNumberWithLod.toString(), tileMesh)
+				}).catch(() => {
+					const emptyTileMesh = new BABYLON.Mesh("missing: " + tileNumberWithLod, this.scene);
+					this.#loadedTiles.set(tileNumberWithLod.toString(), emptyTileMesh)
 				})
 			} else {
 				return Promise.resolve()

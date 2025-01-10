@@ -70,14 +70,24 @@
         background-color: #f0f0f0;
       }
 
-      #loading {
+      .info {
+        color: #fff;
+        font-size: 12px;
+        font-family: sans-serif;
+        @media screen and (max-width: 768px) {
+          font-size: 18px;
+        }
+      }
+
+      .status {
         position: absolute;
         bottom: 8px;
         left: 50%;
         transform: translateX(-50%);
-        color: #fff;
-        font-size: 12px;
-        font-family: sans-serif;
+        text-align: center;
+        @media screen and (max-width: 768px) {
+          bottom: 32px;
+        }
       }
 
       #loading span::before {
@@ -90,13 +100,14 @@
         display: inline-block;
       }
 
+      #missing {
+        display: none;
+      }
+
       #attribution {
         position: absolute;
         bottom: 8px;
         right: 8px;
-        color: #fff;
-        font-size: 12px;
-        font-family: sans-serif;
       }
 
       #attribution a {
@@ -132,19 +143,22 @@
       <ul id="resultsList"></ul>
     </div>
 
-    <div id="loading"><span>Loading center tile</span></div>
+    <div id="loading" class="status info"><span>Loading center tile</span></div>
+    <div id="missing" class="status info"><span>This demo currently only shows a few example areas.
+      <br/>Unfortunately, it appears no tiles for this location are available.</span></div>
 
     <script>
       const viewer = OSM2World.Viewer.fromCanvas("renderCanvas", "https://gltiles.osm2world.org/glb/")
       setupSearchField(viewer, document.getElementById("renderCanvas"))
 
       viewer.setStatusCallback(o => {
-        document.getElementById("loading").style.display = o.centerTileLoaded ? "none" : "block"
+        document.getElementById("loading").style.display = o.centerTileLoading ? "block" : "none"
+        document.getElementById("missing").style.display = o.centerTileMissing ? "block" : "none"
       })
 
     </script>
 
-    <div id="attribution">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></div>
+    <div id="attribution" class="info">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></div>
 
   </body>
 
