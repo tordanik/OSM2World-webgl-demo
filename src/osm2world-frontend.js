@@ -20,7 +20,7 @@ const OSM2World = {};
 		}
 	}
 
-	const defaultRenderOptions = {
+	OSM2World.defaultRenderOptions = {
 		low: new OSM2World.RenderOptions(256, null, 1),
 		high: new OSM2World.RenderOptions(512, 2048, 4)
 	}

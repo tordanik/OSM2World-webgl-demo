@@ -148,7 +148,8 @@
       <br/>Unfortunately, it appears no tiles for this location are available.</span></div>
 
     <script>
-      const viewer = OSM2World.Viewer.fromCanvas("renderCanvas", "https://gltiles.osm2world.org/glb/")
+      const renderOptions = OSM2World.defaultRenderOptions[window.matchMedia("screen and (max-width: 768px)").matches ? "low" : "high"]
+      const viewer = OSM2World.Viewer.fromCanvas("renderCanvas", "https://gltiles.osm2world.org/glb/", renderOptions)
       setupSearchField(viewer, document.getElementById("renderCanvas"))
 
       viewer.setStatusCallback(o => {
