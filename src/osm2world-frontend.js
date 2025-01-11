@@ -11,6 +11,20 @@ const OSM2World = {};
 	const sceneDiameter = 4000;
 	const highLodDiameter = 500;
 
+	/** render options for the viewer */
+	OSM2World.RenderOptions = class {
+		constructor(textureResolution, shadowMapResolution, samples) {
+			this.textureResolution = textureResolution
+			this.shadowMapResolution = shadowMapResolution
+			this.samples = samples
+		}
+	}
+
+	const defaultRenderOptions = {
+		low: new OSM2World.RenderOptions(256, null, 1),
+		high: new OSM2World.RenderOptions(512, 2048, 4)
+	}
+
 	/** WebGL-based viewer */
 	OSM2World.Viewer = class {
 
@@ -33,7 +47,8 @@ const OSM2World = {};
 
 		#statusCallback = null;
 
-		constructor(babylonEngine, babylonScene, tileRoot, originLatLon, camera, updateUrlParameters = false) {
+		constructor(babylonEngine, babylonScene, tileRoot, originLatLon, camera,
+					renderOptions = defaultRenderOptions.high, updateUrlParameters = false) {
 
 			this.#engine = babylonEngine
 			this.scene = babylonScene
@@ -45,9 +60,12 @@ const OSM2World = {};
 
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
 			sunLight.intensity = 1.0
-			this.#shadowGenerator = new BABYLON.CascadedShadowGenerator(2048, sunLight)
-			this.#shadowGenerator.autoCalcDepthBounds = true
-			this.#shadowGenerator.forceBackFacesOnly = true
+
+			if (renderOptions.shadowMapResolution) {
+				this.#shadowGenerator = new BABYLON.CascadedShadowGenerator(renderOptions.shadowMapResolution, sunLight)
+				this.#shadowGenerator.autoCalcDepthBounds = true
+				this.#shadowGenerator.forceBackFacesOnly = true
+			}
 
 			if (originLatLon) {
 				this.originLatLon = new LatLon(originLatLon[0], originLatLon[1])
@@ -67,8 +85,9 @@ const OSM2World = {};
 		 *
 		 * @param {string} canvasID  id of the canvas to use for the viewer
 		 * @param {string} tileRoot  root URL for 3D tiles in glTF format
+		 * @param {OSM2World.RenderOptions} renderOptions  settings to control quality vs. performance tradeoffs
 		 */
-		static fromCanvas(canvasID, tileRoot) {
+		static fromCanvas(canvasID, tileRoot, renderOptions = defaultRenderOptions.high) {
 
 			const canvas = document.getElementById(canvasID)
 			canvas.setAttribute("touchAction", "none")
@@ -93,7 +112,7 @@ const OSM2World = {};
 			camera.panningSensibility = 5;
 			camera.internalCamera = true;
 
-			const result = new OSM2World.Viewer(engine, scene, tileRoot, null, camera, true);
+			const result = new OSM2World.Viewer(engine, scene, tileRoot, null, camera, renderOptions, true);
 
 			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
 			skyDome.material.fogEnabled = false
@@ -102,7 +121,7 @@ const OSM2World = {};
 			const ground = BABYLON.MeshBuilder.CreateGround("ground", {height: sceneDiameter, width: sceneDiameter})
 
 			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
-			defaultPipeline.samples = 4
+			defaultPipeline.samples = renderOptions.samples
 			if (ssrEnabled) {
 				defaultPipeline.fxaaEnabled = true
 				const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera])
@@ -350,7 +369,7 @@ const OSM2World = {};
 
 		#addMeshToScene(mesh, x, y, z) {
 			mesh.setAbsolutePosition(x, y, z)
-			this.#shadowGenerator.addShadowCaster(mesh, true)
+			if (this.#shadowGenerator) { this.#shadowGenerator.addShadowCaster(mesh, true) }
 			mesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
 		}
 
