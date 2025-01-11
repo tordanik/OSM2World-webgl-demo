@@ -56,7 +56,7 @@ const OSM2World = {};
 			this.camera = camera
 			this.#updateUrlParameters = updateUrlParameters
 
-			this.scene.environmentTexture = new BABYLON.HDRCubeTexture("DaySkyHDRI041B.hdr", this.scene, 512, false, true, false, true)
+			this.scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("DaySkyHDRI041B.env", this.scene)
 
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
 			sunLight.intensity = 1.0
