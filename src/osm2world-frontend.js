@@ -37,7 +37,7 @@ const OSM2World = {};
 
 		#shadowGenerator;
 
-		tileLayerRootUrl;
+		tileLayerRootUrls;
 
 		/** currently loaded tiles in a map from TileNumberWithLod string representations to meshes */
 		#loadedTiles = new Map();
@@ -47,12 +47,12 @@ const OSM2World = {};
 
 		#statusCallback = null;
 
-		constructor(babylonEngine, babylonScene, tileRoot, originLatLon, camera,
+		constructor(babylonEngine, babylonScene, tileRoots, originLatLon, camera,
 					renderOptions = defaultRenderOptions.high, updateUrlParameters = false) {
 
 			this.#engine = babylonEngine
 			this.scene = babylonScene
-			this.tileLayerRootUrl = tileRoot
+			this.tileLayerRootUrls = tileRoots
 			this.camera = camera
 			this.#updateUrlParameters = updateUrlParameters
 
@@ -84,10 +84,10 @@ const OSM2World = {};
 		 * Will set up a Babylon scene, camera, sky dome and render loop.
 		 *
 		 * @param {string} canvasID  id of the canvas to use for the viewer
-		 * @param {string} tileRoot  root URL for 3D tiles in glTF format
+		 * @param {string[]} tileRoots  list of root URLs for 3D tiles in glTF format (first will be attempted first)
 		 * @param {OSM2World.RenderOptions} renderOptions  settings to control quality vs. performance tradeoffs
 		 */
-		static fromCanvas(canvasID, tileRoot, renderOptions = defaultRenderOptions.high) {
+		static fromCanvas(canvasID, tileRoots, renderOptions = defaultRenderOptions.high) {
 
 			const canvas = document.getElementById(canvasID)
 			canvas.setAttribute("touchAction", "none")
@@ -112,7 +112,7 @@ const OSM2World = {};
 			camera.panningSensibility = 5;
 			camera.internalCamera = true;
 
-			const result = new OSM2World.Viewer(engine, scene, tileRoot, null, camera, renderOptions, true);
+			const result = new OSM2World.Viewer(engine, scene, tileRoots, null, camera, renderOptions, true);
 
 			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
 			skyDome.material.fogEnabled = false
@@ -158,8 +158,8 @@ const OSM2World = {};
 		 * Creates an OSM2World viewer based on an already-existing Babylon scene.
 		 * The caller is responsible for setting up a camera and render loop.
 		 */
-		static fromBabylonScene(babylonEngine, babylonScene, tileRoot, originLatLon, camera) {
-			return new OSM2World.Viewer(babylonEngine, babylonScene, tileRoot, originLatLon, camera, false);
+		static fromBabylonScene(babylonEngine, babylonScene, tileRoots, originLatLon, camera) {
+			return new OSM2World.Viewer(babylonEngine, babylonScene, tileRoots, originLatLon, camera, false);
 		}
 
 		clearContent() {
@@ -297,7 +297,7 @@ const OSM2World = {};
 					const tileRing = Math.max(Math.abs(t.x - centerTile.x), Math.abs(t.y - centerTile.y))
 					if (tileRing === ring) {
 						if (!this.#loadedTiles.has(tWithLod.toString())) {
-							this.#loadAndPlaceTile(tWithLod)
+							this.#loadAndPlaceTile(tWithLod, this.tileLayerRootUrls)
 							ringCompletelyLoaded = false
 						}
 					}
@@ -347,23 +347,31 @@ const OSM2World = {};
 
 		}
 
-		#loadAndPlaceTile(tileNumberWithLod) {
-			if (!this.#loadedTiles.has(tileNumberWithLod.toString())) {
+		#loadAndPlaceTile(tileNumberWithLod, tileLayerRootUrls, force) {
+			if (force || !this.#loadedTiles.has(tileNumberWithLod.toString())) {
 				this.#loadedTiles.set(tileNumberWithLod.toString(), null) // block further attempts to load the tile while this one is in progress
+
+				if (tileLayerRootUrls.length === 0) {
+					// none of the known tile layers had this tile available
+					const emptyTileMesh = new BABYLON.Mesh("missing: " + tileNumberWithLod, this.scene);
+					this.#loadedTiles.set(tileNumberWithLod.toString(), emptyTileMesh)
+					return
+				}
+
 				const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
 				const centerPos = proj.toXZ(tileNumberWithLod.tileNumber.bounds().center)
 				console.log("Loading tile: " + tileNumberWithLod)
-				return BABYLON.SceneLoader.ImportMeshAsync(null, this.tileLayerRootUrl, tileNumberWithLod + ".glb").then((result) => {
+
+				BABYLON.SceneLoader.ImportMeshAsync(null, tileLayerRootUrls[0], tileNumberWithLod + ".glb").then((result) => {
 					const tileMesh = result.meshes[0]
 					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
 					this.#loadedTiles.set(tileNumberWithLod.toString(), tileMesh)
 				}).catch(() => {
-					const emptyTileMesh = new BABYLON.Mesh("missing: " + tileNumberWithLod, this.scene);
-					this.#loadedTiles.set(tileNumberWithLod.toString(), emptyTileMesh)
+					// try the next tile layer
+					this.#loadAndPlaceTile(tileNumberWithLod, tileLayerRootUrls.slice(1), true)
 				})
-			} else {
-				return Promise.resolve()
+
 			}
 		}
 
