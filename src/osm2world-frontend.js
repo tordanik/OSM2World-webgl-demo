@@ -25,6 +25,18 @@ const OSM2World = {};
 		high: new OSM2World.RenderOptions(512, 2048, 4)
 	}
 
+	/** individual models available to be displayed in addition to the 3D tile layers */
+	OSM2World.Model = class {
+		constructor(url, position, ele, rotation, scale, infoContent) {
+			this.url = url
+			this.position = position
+			this.ele = ele
+			this.rotation = rotation
+			this.scale = scale
+			this.infoContent = infoContent
+		}
+	}
+
 	/** WebGL-based viewer */
 	OSM2World.Viewer = class {
 
@@ -39,11 +51,13 @@ const OSM2World = {};
 
 		tileLayerRootUrls;
 
+		availableModels = [];
+
 		/** currently loaded tiles in a map from TileNumberWithLod string representations to meshes */
 		#loadedTiles = new Map();
 
-		modelUrl;
-		#model = null;
+		/** currently loaded models in a map from URL strings to meshes */
+		#loadedModels = new Map();
 
 		#statusCallback = null;
 
@@ -164,23 +178,17 @@ const OSM2World = {};
 
 		clearContent() {
 
-			if (this.#model) {
-				this.#model.dispose()
-				this.#model = null
-			}
+			this.#loadedModels.forEach(t => {if (t) {t.dispose()}})
+			this.#loadedModels.clear()
 
 			this.#loadedTiles.forEach(t => {if (t) {t.dispose()}})
 			this.#loadedTiles.clear()
 
 		}
 
-		addModel(modelUrl) {
-			this.clearContent()
-			return BABYLON.SceneLoader.ImportMeshAsync(null, modelUrl).then((result) => {
-				const mesh = result.meshes[0]
-				this.#addMeshToScene(mesh, 0, 0, 0)
-				this.#model = mesh
-			})
+		/** @param model {OSM2World.Model}  the model to add */
+		addModel(model) {
+			this.availableModels.push(model)
 		}
 
 		setStatusCallback(callback) {
@@ -255,7 +263,7 @@ const OSM2World = {};
 		}
 
 		/**
-		 * loads and discards tiles based on the current camera position.
+		 * loads and discards tiles (and individual models) based on the current camera position.
  		 */
 		#updateTiles() {
 
@@ -327,6 +335,27 @@ const OSM2World = {};
 				}
 			}
 
+
+			// load the models near the camera, discard models which are no longer near the camera
+
+			const modelViewDistance = (sceneDiameter / 2) * 1.1;
+
+			for (let model of this.availableModels) {
+				if (proj.toXZ(model.position).distanceTo(cameraXZ) <= modelViewDistance) {
+					if (!this.#loadedModels.has(model.url)) {
+						this.#loadAndPlaceModel(model)
+					}
+				} else {
+					if (this.#loadedModels.has(model.url)) {
+						console.log("Discarding model: " + model.url)
+						const mesh = this.#loadedModels.get(model.url)
+						if (mesh != null) { mesh.dispose() }
+						this.#loadedModels.delete(model.url)
+					}
+				}
+			}
+
+
 			// update the URL based on the current view
 
 			if (this.#updateUrlParameters) {
@@ -375,7 +404,30 @@ const OSM2World = {};
 			}
 		}
 
-		#addMeshToScene(mesh, x, y, z) {
+		#loadAndPlaceModel(model, force) {
+			if (force || !this.#loadedModels.has(model.url)) {
+				this.#loadedModels.set(model.url, null) // block further attempts to load the model while this one is in progress
+
+				const proj = new OrthographicAzimuthalMapProjection(this.originLatLon)
+				const centerPos = proj.toXZ(model.position)
+				console.log("Loading model: " + model.url)
+
+				BABYLON.SceneLoader.ImportMeshAsync(null, model.url).then((result) => {
+					const mesh = result.meshes[0]
+					mesh.name = "Model " + model.url
+					this.#addMeshToScene(mesh, -centerPos.x, model.ele, -centerPos.z, model.rotation, model.scale)
+					this.#loadedModels.set(model.url, mesh)
+				}).catch(() => {
+					const emptyTileMesh = new BABYLON.Mesh("missing: " + model.url, this.scene);
+					this.#loadedModels.set(model.url, emptyTileMesh)
+				})
+
+			}
+		}
+
+		#addMeshToScene(mesh, x, y, z, rotationY, scale) {
+			if (rotationY) { mesh.rotation =  new BABYLON.Vector3(0, rotationY, 0) }
+			if (scale) { mesh.scaling = new BABYLON.Vector3(scale[0], scale[1], scale[2]) }
 			mesh.setAbsolutePosition(x, y, z)
 			if (this.#shadowGenerator) { this.#shadowGenerator.addShadowCaster(mesh, true) }
 			mesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
