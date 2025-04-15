@@ -114,6 +114,12 @@ const OSM2World = {};
 
 			scene.skipPointerMovePicking = true
 
+			scene.onPointerObservable.add((pointerInfo) => {
+				if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
+					scene.pick(scene.pointerX, scene.pointerY);
+				}
+			});
+
 			const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 4, 500, new BABYLON.Vector3(0, 0, 0));
 			camera.attachControl(canvas, true, false, 0);
 			camera.minZ = 0.1;
@@ -395,6 +401,7 @@ const OSM2World = {};
 					const tileMesh = result.meshes[0]
 					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
+					tileMesh.getChildMeshes(false).forEach((c) => { c.isPickable = false })
 					this.#loadedTiles.set(tileNumberWithLod.toString(), tileMesh)
 				}).catch(() => {
 					// try the next tile layer
@@ -416,6 +423,12 @@ const OSM2World = {};
 					const mesh = result.meshes[0]
 					mesh.name = "Model " + model.url
 					this.#addMeshToScene(mesh, -centerPos.x, model.ele, -centerPos.z, model.rotation, model.scale)
+					mesh.getChildMeshes(false).forEach((c) => {
+						c.isPickable = true
+						c.actionManager = new BABYLON.ActionManager(this.scene)
+						c.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+							() => console.log("Picked model: " + model.infoContent)))
+					})
 					this.#loadedModels.set(model.url, mesh)
 				}).catch(() => {
 					const emptyTileMesh = new BABYLON.Mesh("missing: " + model.url, this.scene);
