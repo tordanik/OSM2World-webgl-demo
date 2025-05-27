@@ -27,13 +27,14 @@ const OSM2World = {};
 
 	/** individual models available to be displayed in addition to the 3D tile layers */
 	OSM2World.Model = class {
-		constructor(url, position, ele, rotation, scale, infoContent) {
+		constructor(url, position, ele, rotation, scale, infoContent, visible = true) {
 			this.url = url
 			this.position = position
 			this.ele = ele
 			this.rotation = rotation
 			this.scale = scale
 			this.infoContent = infoContent
+			this.visible = visible
 		}
 	}
 
@@ -347,7 +348,7 @@ const OSM2World = {};
 			const modelViewDistance = (sceneDiameter / 2) * 1.1;
 
 			for (let model of this.availableModels) {
-				if (proj.toXZ(model.position).distanceTo(cameraXZ) <= modelViewDistance) {
+				if (model.visible && proj.toXZ(model.position).distanceTo(cameraXZ) <= modelViewDistance) {
 					if (!this.#loadedModels.has(model.url)) {
 						this.#loadAndPlaceModel(model)
 					}
