@@ -27,13 +27,13 @@ const OSM2World = {};
 
 	/** individual models available to be displayed in addition to the 3D tile layers */
 	OSM2World.Model = class {
-		constructor(url, position, ele, rotation, scale, infoContent, visible = true) {
+		constructor(url, position, ele, rotation, scale, onPick, visible = true) {
 			this.url = url
 			this.position = position
 			this.ele = ele
 			this.rotation = rotation
 			this.scale = scale
-			this.infoContent = infoContent
+			this.onPick = onPick
 			this.visible = visible
 		}
 	}
@@ -427,8 +427,8 @@ const OSM2World = {};
 					mesh.getChildMeshes(false).forEach((c) => {
 						c.isPickable = true
 						c.actionManager = new BABYLON.ActionManager(this.scene)
-						c.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-							() => console.log("Picked model: " + model.infoContent)))
+						c.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+							BABYLON.ActionManager.OnPickTrigger, model.onPick))
 					})
 					this.#loadedModels.set(model.url, mesh)
 				}).catch(() => {
