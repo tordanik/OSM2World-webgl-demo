@@ -215,8 +215,6 @@ const OSM2World = {};
 				this.camera.beta = beta || Math.PI / 4
 			}
 
-			this.clearContent() // TODO remove once updateTiles works
-
 		}
 
 		/**
