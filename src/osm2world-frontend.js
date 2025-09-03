@@ -147,8 +147,7 @@ const OSM2World = {};
 			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
 			defaultPipeline.samples = renderOptions.samples
 			if (ssrEnabled) {
-				defaultPipeline.fxaaEnabled = true
-				const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera])
+				new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
 			}
 
 			// Register a render loop to repeatedly render the scene
