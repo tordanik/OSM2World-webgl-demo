@@ -140,6 +140,9 @@ const OSM2World = {};
 			skyDome.rotate(new BABYLON.Vector3(0, 1, 0), -Math.PI / 4) // rotate to match reflection texture
 
 			const ground = BABYLON.MeshBuilder.CreateGround("ground", {height: sceneDiameter, width: sceneDiameter})
+			ground.material = new BABYLON.PBRMaterial("groundMaterial", scene)
+			ground.material.albedoColor = new BABYLON.Color3(0.2, 0.2, 0.2)
+			ground.material.metallic = 0
 
 			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
 			defaultPipeline.samples = renderOptions.samples
@@ -438,11 +441,24 @@ const OSM2World = {};
 		}
 
 		#addMeshToScene(mesh, x, y, z, rotationY, scale) {
+
 			if (rotationY) { mesh.rotation =  new BABYLON.Vector3(0, rotationY, 0) }
 			if (scale) { mesh.scaling = new BABYLON.Vector3(scale[0], scale[1], scale[2]) }
 			mesh.setAbsolutePosition(x, y, z)
 			if (this.#shadowGenerator) { this.#shadowGenerator.addShadowCaster(mesh, true) }
 			mesh.getChildMeshes(false).forEach((c) => {c.receiveShadows = true})
+
+			// assign metallic values (affects reflections if SSR is enabled)
+			mesh.getChildMeshes(false).forEach((c) => {
+				if (!c.material.metallicTexture) {
+					if (c.material.name === "WATER") {
+						c.material.metallic = 1
+					} else {
+						c.material.metallic = 0
+					}
+				}
+			})
+
 		}
 
 		/** returns the distance between a point and the bounds of a tile */
