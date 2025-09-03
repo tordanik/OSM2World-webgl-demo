@@ -7,22 +7,22 @@
 const OSM2World = {};
 (function() {
 
-	const ssrEnabled = false;
 	const sceneDiameter = 4000;
 	const highLodDiameter = 500;
 
 	/** render options for the viewer */
 	OSM2World.RenderOptions = class {
-		constructor(textureResolution, shadowMapResolution, samples) {
+		constructor(textureResolution, shadowMapResolution, samples, ssr) {
 			this.textureResolution = textureResolution
 			this.shadowMapResolution = shadowMapResolution
 			this.samples = samples
+			this.ssr = ssr
 		}
 	}
 
 	OSM2World.defaultRenderOptions = {
-		low: new OSM2World.RenderOptions(256, null, 1),
-		high: new OSM2World.RenderOptions(512, 2048, 4)
+		low: new OSM2World.RenderOptions(256, null, 1, false),
+		high: new OSM2World.RenderOptions(512, 2048, 4, true)
 	}
 
 	/** individual models available to be displayed in addition to the 3D tile layers */
@@ -146,7 +146,7 @@ const OSM2World = {};
 
 			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
 			defaultPipeline.samples = renderOptions.samples
-			if (ssrEnabled) {
+			if (renderOptions.ssr) {
 				new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
 			}
 
