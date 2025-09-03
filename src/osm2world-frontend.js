@@ -71,8 +71,6 @@ const OSM2World = {};
 			this.camera = camera
 			this.#updateUrlParameters = updateUrlParameters
 
-			this.scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("DaySkyHDRI041B.env", this.scene)
-
 			const sunLight = new BABYLON.DirectionalLight("sunlight", new BABYLON.Vector3(-1, -1, -1))
 			sunLight.intensity = 1.0
 
@@ -113,6 +111,8 @@ const OSM2World = {};
 			scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
 			scene.fogColor = new BABYLON.Color3(0.6, 0.6, 0.7);
 
+			scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("DaySkyHDRI041B.env", scene)
+
 			scene.skipPointerMovePicking = true
 
 			scene.onPointerObservable.add((pointerInfo) => {
@@ -147,7 +147,8 @@ const OSM2World = {};
 			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
 			defaultPipeline.samples = renderOptions.samples
 			if (renderOptions.ssr) {
-				new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
+				const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
+				ssr.environmentTexture = scene.environmentTexture
 			}
 
 			// Register a render loop to repeatedly render the scene
