@@ -133,6 +133,11 @@ const OSM2World = {};
 			camera.panningSensibility = 5;
 			camera.internalCamera = true;
 
+			const mapper = camera.movement.input;
+			mapper.setInteraction("pointer", { button: 0 }, "pan");
+			mapper.setInteraction("pointer", { button: 1 }, "rotate");
+			mapper.setInteraction("pointer", { button: 2 }, "rotate");
+
 			const result = new OSM2World.Viewer(engine, scene, tileRoots, null, camera, renderOptions, true);
 
 			const skyDome = new BABYLON.PhotoDome("sky", "DaySkyHDRI041B.jpg", { size: sceneDiameter }, this.scene);
