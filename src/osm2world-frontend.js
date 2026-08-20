@@ -10,6 +10,18 @@ const OSM2World = {};
 	const sceneDiameter = 4000;
 	const highLodDiameter = 500;
 
+	/*
+	 * Hack: Babylon's glTF loader rejects any URI which contains ".." (see GLTFLoader._ValidateUri).
+	 * OSM2World tiles, however, reference the textures they share with other tiles using paths such as
+	 * "../../../textures/foo.jpg", relative to the .glb file. Disabling the check is acceptable here
+	 * because the tile servers are trusted; the ".." segments are resolved by the browser.
+	 */
+	if (BABYLON.GLTF2 && BABYLON.GLTF2.GLTFLoader) {
+		BABYLON.GLTF2.GLTFLoader._ValidateUri = () => true
+	} else {
+		console.warn("Cannot disable the glTF loader's URI validation, tiles may fail to load")
+	}
+
 	/** render options for the viewer */
 	OSM2World.RenderOptions = class {
 		constructor(textureResolution, shadowMapResolution, samples, ssr) {
@@ -404,7 +416,14 @@ const OSM2World = {};
 				const centerPos = proj.toXZ(tileNumberWithLod.tileNumber.bounds().center)
 				console.log("Loading tile: " + tileNumberWithLod)
 
-				BABYLON.SceneLoader.ImportMeshAsync(null, tileLayerRootUrls[0], tileNumberWithLod + ".glb").then((result) => {
+				// the tile's own directory (not the tile layer root) is used as the root URL
+				// because that's what the texture paths within the tile are relative to
+				const tilePath = tileNumberWithLod.toString()
+				const tileRootUrl = tileLayerRootUrls[0] + tilePath.substring(0, tilePath.lastIndexOf("/") + 1)
+
+				const tileFileName = tilePath.substring(tilePath.lastIndexOf("/") + 1) + ".glb"
+
+				BABYLON.SceneLoader.ImportMeshAsync(null, tileRootUrl, tileFileName).then((result) => {
 					const tileMesh = result.meshes[0]
 					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
