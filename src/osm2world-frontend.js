@@ -502,7 +502,7 @@ const OSM2World = {};
 			} else if (point.x >= min.x && point.x <= max.x) {
 				// closest point is on a horizontal edge
 				return Math.min(Math.abs(point.z - min.z), Math.abs(point.z - max.z));
-			} else if  (point.x >= min.x && point.x <= max.x) {
+			} else if (point.z >= min.z && point.z <= max.z) {
 				// closest point is on a vertical edge
 				return Math.min(Math.abs(point.x - min.x), Math.abs(point.x - max.x));
 			} else {
