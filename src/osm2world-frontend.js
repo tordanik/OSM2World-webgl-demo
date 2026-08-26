@@ -125,7 +125,7 @@ const OSM2World = {};
 			const canvas = document.getElementById(canvasID)
 			canvas.setAttribute("touchAction", "none")
 
-			const engine = new BABYLON.Engine(canvas, true)
+			const engine = new BABYLON.Engine(canvas, false)
 			const scene = new BABYLON.Scene(engine)
 
 			scene.fogMode = BABYLON.Scene.FOGMODE_LINEAR
@@ -169,11 +169,13 @@ const OSM2World = {};
 			ground.material.albedoColor = new BABYLON.Color3(0.2, 0.2, 0.2)
 			ground.material.metallic = 0
 
-			const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
-			defaultPipeline.samples = renderOptions.samples
-			if (renderOptions.ssr) {
-				const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
-				ssr.environmentTexture = scene.environmentTexture
+			if (renderOptions.samples > 1 || renderOptions.ssr) {
+				const defaultPipeline = new BABYLON.DefaultRenderingPipeline("defaultPipeline", true, scene, [camera])
+				defaultPipeline.samples = renderOptions.samples
+				if (renderOptions.ssr) {
+					const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
+					ssr.environmentTexture = scene.environmentTexture
+				}
 			}
 
 			// Register a render loop to repeatedly render the scene
