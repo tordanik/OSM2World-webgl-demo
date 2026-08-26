@@ -14,13 +14,21 @@ const OSM2World = {};
 	 * Hack: Babylon's glTF loader rejects any URI which contains ".." (see GLTFLoader._ValidateUri).
 	 * OSM2World tiles, however, reference the textures they share with other tiles using paths such as
 	 * "../../../textures/foo.jpg", relative to the .glb file. Disabling the check is acceptable here
-	 * because the tile servers are trusted; the ".." segments are resolved by the browser.
+	 * because the tile servers are trusted.
 	 */
 	if (BABYLON.GLTF2 && BABYLON.GLTF2.GLTFLoader) {
 		BABYLON.GLTF2.GLTFLoader._ValidateUri = () => true
 	} else {
 		console.warn("Cannot disable the glTF loader's URI validation, tiles may fail to load")
 	}
+
+	BABYLON.SceneLoader.OnPluginActivatedObservable.add((plugin) => {
+		if (plugin.name === "gltf") {
+			// Tiles are loaded with the tile layer root, not the tile's own directory, as the glTF root URL.
+			// The underlying assumption about the path structure holds for the tiles, but not necessarily for addModel.
+			plugin.preprocessUrlAsync = (url) => Promise.resolve(url.replaceAll("../", ""))
+		}
+	})
 
 	/** render options for the viewer */
 	OSM2World.RenderOptions = class {
@@ -416,14 +424,9 @@ const OSM2World = {};
 				const centerPos = proj.toXZ(tileNumberWithLod.tileNumber.bounds().center)
 				console.log("Loading tile: " + tileNumberWithLod)
 
-				// the tile's own directory (not the tile layer root) is used as the root URL
-				// because that's what the texture paths within the tile are relative to
-				const tilePath = tileNumberWithLod.toString()
-				const tileRootUrl = tileLayerRootUrls[0] + tilePath.substring(0, tilePath.lastIndexOf("/") + 1)
+				const tileFileName = tileNumberWithLod.toString() + ".glb"
 
-				const tileFileName = tilePath.substring(tilePath.lastIndexOf("/") + 1) + ".glb"
-
-				BABYLON.SceneLoader.ImportMeshAsync(null, tileRootUrl, tileFileName).then((result) => {
+				BABYLON.SceneLoader.ImportMeshAsync(null, tileLayerRootUrls[0], tileFileName).then((result) => {
 					const tileMesh = result.meshes[0]
 					tileMesh.name = tileNumberWithLod.toString()
 					this.#addMeshToScene(tileMesh, -centerPos.x, 0, -centerPos.z)
