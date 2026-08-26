@@ -213,10 +213,10 @@ const OSM2World = {};
 
 		clearContent() {
 
-			this.#loadedModels.forEach(t => {if (t) {t.dispose()}})
+			this.#loadedModels.forEach(t => this.#disposeLoadedMesh(t))
 			this.#loadedModels.clear()
 
-			this.#loadedTiles.forEach(t => {if (t) {t.dispose()}})
+			this.#loadedTiles.forEach(t => this.#disposeLoadedMesh(t))
 			this.#loadedTiles.clear()
 
 		}
@@ -362,7 +362,7 @@ const OSM2World = {};
 
 					// discard this tile
 					console.log("Discarding tile: " + tileNumberWithLod)
-					if (mesh != null) { mesh.dispose() }
+					this.#disposeLoadedMesh(mesh)
 					this.#loadedTiles.delete(tileNumberWithLod)
 
 				}
@@ -381,8 +381,7 @@ const OSM2World = {};
 				} else {
 					if (this.#loadedModels.has(model.url)) {
 						console.log("Discarding model: " + model.url)
-						const mesh = this.#loadedModels.get(model.url)
-						if (mesh != null) { mesh.dispose() }
+						this.#disposeLoadedMesh(this.#loadedModels.get(model.url))
 						this.#loadedModels.delete(model.url)
 					}
 				}
@@ -523,6 +522,11 @@ const OSM2World = {};
 			const cameraXZ = {x: -this.camera.target.x, z: -this.camera.target.z}
 			return proj.toLatLon(cameraXZ)
 
+		}
+
+		/** removes a mesh which was loaded into the scene, along with its materials and textures */
+		#disposeLoadedMesh(mesh) {
+			if (mesh) { mesh.dispose(false, true) }
 		}
 
 	}
