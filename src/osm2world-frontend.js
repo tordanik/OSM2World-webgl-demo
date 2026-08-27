@@ -41,7 +41,7 @@ const OSM2World = {};
 	}
 
 	OSM2World.defaultRenderOptions = {
-		low: new OSM2World.RenderOptions(256, null, 1, false),
+		low: new OSM2World.RenderOptions(256, null, 4, false),
 		high: new OSM2World.RenderOptions(512, 2048, 4, true)
 	}
 
