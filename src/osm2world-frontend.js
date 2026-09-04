@@ -10,22 +10,11 @@ const OSM2World = {};
 	const sceneDiameter = 4000;
 	const highLodDiameter = 500;
 
-	/*
-	 * Hack: Babylon's glTF loader rejects any URI which contains ".." (see GLTFLoader._ValidateUri).
-	 * OSM2World tiles, however, reference the textures they share with other tiles using paths such as
-	 * "../../../textures/foo.jpg", relative to the .glb file. Disabling the check is acceptable here
-	 * because the tile servers are trusted.
-	 */
-	if (BABYLON.GLTF2 && BABYLON.GLTF2.GLTFLoader) {
-		BABYLON.GLTF2.GLTFLoader._ValidateUri = () => true
-	} else {
-		console.warn("Cannot disable the glTF loader's URI validation, tiles may fail to load")
-	}
-
 	BABYLON.SceneLoader.OnPluginActivatedObservable.add((plugin) => {
 		if (plugin.name === "gltf") {
 			// Tiles are loaded with the tile layer root, not the tile's own directory, as the glTF root URL.
 			// The underlying assumption about the path structure holds for the tiles, but not necessarily for addModel.
+			// Setting preprocessUrlAsync also disables the loader's rejection of URIs containing "..".
 			plugin.preprocessUrlAsync = (url) => Promise.resolve(url.replaceAll("../", ""))
 		}
 	})
