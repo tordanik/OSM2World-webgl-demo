@@ -470,8 +470,6 @@ const OSM2World = {};
 				if (!c.material.metallicTexture) {
 					if (c.material.name === "WATER") {
 						c.material.metallic = 1
-					} else {
-						c.material.metallic = 0
 					}
 				}
 			})
