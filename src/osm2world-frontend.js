@@ -164,6 +164,8 @@ const OSM2World = {};
 				if (renderOptions.ssr) {
 					const ssr = new BABYLON.SSRRenderingPipeline("ssr", scene, [camera], true)
 					ssr.environmentTexture = scene.environmentTexture
+					ssr.reflectivityThreshold = 0.06
+					ssr.useFresnel = true
 				}
 			}
 
@@ -469,7 +471,8 @@ const OSM2World = {};
 			mesh.getChildMeshes(false).forEach((c) => {
 				if (!c.material.metallicTexture) {
 					if (c.material.name === "WATER") {
-						c.material.metallic = 1
+						c.material.metallic = 0.3
+						c.material.roughness = 0.1
 					}
 				}
 			})
